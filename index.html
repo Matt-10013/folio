@@ -1055,7 +1055,7 @@ async function unsplashSearch(queryStr,page=1,perPage=10){
       url:p.urls.full,
       thumb:p.urls.thumb,
       description:p.description||p.alt_description||'',
-      photographer:{name:p.user.name},
+      photographer:{name:p.user.name,username:p.user.username,profile:p.user.links.html,avatar:p.user.profile_image?.medium||'',bio:p.user.bio||''},
       tags:(p.tags||[]).map(t=>t.title.replace(/\s+/g,'_').toLowerCase())
     }));
   }catch(e){return null}
@@ -1072,7 +1072,7 @@ async function unsplashRandom(count=10,queryStr=''){
       url:p.urls.full,
       thumb:p.urls.thumb,
       description:p.description||p.alt_description||'',
-      photographer:{name:p.user.name},
+      photographer:{name:p.user.name,username:p.user.username,profile:p.user.links.html,avatar:p.user.profile_image?.medium||'',bio:p.user.bio||''},
       tags:(p.tags||[]).map(t=>t.title.replace(/\s+/g,'_').toLowerCase())
     }));
   }catch(e){return null}
