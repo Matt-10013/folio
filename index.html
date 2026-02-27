@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Folio</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0a0a0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Folio">
+<meta name="description" content="Discover · Collect · Learn — A personal photography discovery feed">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0c;--surface:#111114;--surface2:#18181c;--surface3:#1f1f24;
+  --border:rgba(255,255,255,0.06);--border-light:rgba(255,255,255,0.1);
+  --text:#f0f0f2;--text-muted:#8a8a96;--text-dim:#4a4a56;
+  --accent:#c8a97e;--accent-glow:rgba(200,169,126,0.06);--accent-dim:rgba(200,169,126,0.4);
+  --green:#5ec269;--red:#e05252;
+  --serif:'Playfair Display',Georgia,serif;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  --ease:cubic-bezier(0.25,0.1,0.25,1);
+  --radius:12px;
+}
+html{font-size:16px}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:2px}
+a{color:var(--accent);text-decoration:none}
+a:hover{opacity:.8}
+
+#app{min-height:100vh;min-height:100dvh}
+
+/* ===== LOADING ===== */
+.loading{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.spinner{width:24px;height:24px;border:2px solid var(--border-light);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-text{font-size:.8rem;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase}
+
+/* ===== LOGIN ===== */
+.login-screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;animation:fadeUp .6s var(--ease)}
+.login-logo{font-family:var(--serif);font-size:2.8rem;font-weight:400;letter-spacing:6px;text-transform:uppercase;margin-bottom:8px}
+.login-logo span{color:var(--accent)}
+.login-tagline{font-size:.7rem;font-weight:400;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim);margin-bottom:64px}
+.login-btn{display:flex;align-items:center;gap:12px;padding:14px 36px;background:transparent;border:1px solid var(--border-light);border-radius:8px;color:var(--text);font-size:.85rem;font-weight:400;font-family:var(--sans);cursor:pointer;transition:all .3s var(--ease);letter-spacing:.5px}
+.login-btn:hover{border-color:var(--accent);background:var(--accent-glow)}
+.login-btn svg{width:18px;height:18px}
+.login-sub{font-size:.7rem;color:var(--text-dim);margin-top:20px;letter-spacing:.5px}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(10,10,12,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));max-width:600px;margin:0 auto}
+.nav-tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 16px;background:none;border:none;cursor:pointer;color:var(--text-dim);transition:color .2s var(--ease);-webkit-tap-highlight-color:transparent}
+.nav-tab.active{color:var(--accent)}
+.nav-tab svg{width:22px;height:22px;stroke-width:1.5}
+.nav-tab span{font-size:.6rem;font-weight:500;letter-spacing:1px;text-transform:uppercase}
+
+/* ===== FEED ===== */
+.feed-container{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding-bottom:80px}
+.feed-header{position:sticky;top:0;z-index:50;width:100%;background:rgba(10,10,12,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:16px 20px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border)}
+.feed-logo{font-family:var(--serif);font-size:1.1rem;font-weight:400;letter-spacing:4px;text-transform:uppercase;color:var(--text-muted)}
+.feed-logo span{color:var(--accent)}
+
+.photo-card{width:100%;max-width:600px;padding:0 0 24px;animation:fadeUp .5s var(--ease)}
+.photo-frame{position:relative;width:100%;background:var(--surface);overflow:hidden;cursor:pointer}
+.photo-frame img{width:100%;display:block;min-height:300px;max-height:85vh;object-fit:contain;background:var(--surface)}
+.photo-frame .loading-ph{width:100%;height:420px;display:flex;align-items:center;justify-content:center}
+
+.photo-info{padding:16px 20px 0}
+.photo-artist{font-family:var(--serif);font-size:1rem;font-weight:400;letter-spacing:.3px;margin-bottom:4px;cursor:pointer;display:inline-block}
+.photo-artist:hover{color:var(--accent)}
+.photo-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.photo-tag{font-size:.65rem;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:4px 10px;background:var(--surface2);border-radius:4px}
+
+.photo-actions{display:flex;align-items:center;justify-content:center;gap:48px;padding:20px}
+.action-btn{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s var(--ease);-webkit-tap-highlight-color:transparent}
+.action-btn.dislike{background:transparent;border:1px solid rgba(224,82,82,0.3);color:var(--red)}
+.action-btn.dislike:hover,.action-btn.dislike:active{background:rgba(224,82,82,0.1);border-color:var(--red);transform:scale(1.08)}
+.action-btn.save{background:transparent;border:1px solid var(--border-light);color:var(--text-muted);width:44px;height:44px}
+.action-btn.save:hover{border-color:var(--accent);color:var(--accent)}
+.action-btn.like{background:transparent;border:1px solid rgba(94,194,105,0.3);color:var(--green)}
+.action-btn.like:hover,.action-btn.like:active{background:rgba(94,194,105,0.1);border-color:var(--green);transform:scale(1.08)}
+.action-btn svg{width:24px;height:24px}
+.action-btn.save svg{width:20px;height:20px}
+
+.action-pulse{animation:pulse .4s var(--ease)}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+.feed-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:40px;text-align:center}
+.feed-empty-icon{font-size:2.5rem;margin-bottom:20px;opacity:.3}
+.feed-empty-title{font-family:var(--serif);font-size:1.2rem;color:var(--text-muted);margin-bottom:8px}
+.feed-empty-text{font-size:.85rem;color:var(--text-dim);max-width:280px;line-height:1.6}
+
+/* ===== ARTIST DETAIL OVERLAY ===== */
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);overflow-y:auto;animation:fadeIn .25s var(--ease);-webkit-overflow-scrolling:touch}
+.overlay-content{max-width:600px;margin:0 auto;padding:0 0 100px}
+.overlay-close{position:sticky;top:0;z-index:10;display:flex;justify-content:flex-end;padding:16px 20px;background:linear-gradient(rgba(0,0,0,0.8),transparent)}
+.overlay-close button{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:var(--text-muted);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.overlay-close button:hover{background:rgba(255,255,255,0.14);color:var(--text)}
+
+.artist-header{padding:0 24px 32px;text-align:center}
+.artist-avatar{width:72px;height:72px;border-radius:50%;background:var(--surface2);border:2px solid var(--border-light);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;overflow:hidden}
+.artist-avatar img{width:100%;height:100%;object-fit:cover}
+.artist-name{font-family:var(--serif);font-size:1.6rem;font-weight:400;letter-spacing:.5px;margin-bottom:6px}
+.artist-bio{font-size:.85rem;color:var(--text-muted);line-height:1.6;max-width:400px;margin:0 auto 20px}
+.artist-links{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.artist-link{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--border-light);border-radius:6px;font-size:.75rem;font-weight:500;letter-spacing:.5px;color:var(--text-muted);transition:all .2s}
+.artist-link:hover{border-color:var(--accent);color:var(--accent)}
+.artist-follow{background:var(--accent);color:#0a0a0c;border-color:var(--accent);font-weight:600}
+.artist-follow:hover{opacity:.85;color:#0a0a0c}
+.artist-follow.following{background:transparent;color:var(--accent);border-color:var(--accent)}
+
+.artist-section{padding:0 24px;margin-bottom:32px}
+.section-label{font-size:.65rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:16px}
+.artist-gallery{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.artist-gallery-item{aspect-ratio:1;background:var(--surface);border-radius:8px;overflow:hidden}
+.artist-gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform .3s var(--ease)}
+.artist-gallery-item:hover img{transform:scale(1.04)}
+.artist-tags{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ===== LIKED COLLECTION ===== */
+.view{min-height:100vh;min-height:100dvh;padding:0 0 100px;max-width:600px;margin:0 auto;animation:fadeUp .4s var(--ease)}
+.view-header{position:sticky;top:0;z-index:50;background:rgba(10,10,12,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:16px 20px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border)}
+.view-title{font-family:var(--serif);font-size:1.1rem;font-weight:400;letter-spacing:3px;text-transform:uppercase;color:var(--text-muted)}
+
+.liked-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px}
+.liked-item{aspect-ratio:1;background:var(--surface);overflow:hidden;cursor:pointer;position:relative}
+.liked-item img{width:100%;height:100%;object-fit:cover;transition:opacity .2s}
+.liked-item:hover img{opacity:.8}
+.liked-item .liked-artist{position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(transparent,rgba(0,0,0,0.7));font-size:.7rem;color:white;font-weight:500;opacity:0;transition:opacity .2s}
+.liked-item:hover .liked-artist{opacity:1}
+
+/* ===== FOLLOWING ===== */
+.following-list{padding:8px 0}
+.following-item{display:flex;align-items:center;gap:16px;padding:16px 20px;cursor:pointer;transition:background .2s;border-bottom:1px solid var(--border)}
+.following-item:hover{background:var(--surface)}
+.following-avatar{width:48px;height:48px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;overflow:hidden;flex-shrink:0}
+.following-avatar img{width:100%;height:100%;object-fit:cover}
+.following-info{flex:1;min-width:0}
+.following-name{font-size:.9rem;font-weight:500;margin-bottom:2px}
+.following-genre{font-size:.75rem;color:var(--text-dim)}
+.following-action{color:var(--text-dim);font-size:.8rem}
+
+/* ===== SETTINGS ===== */
+.settings{padding:24px 20px}
+.settings-section{margin-bottom:36px}
+.settings-title{font-family:var(--serif);font-size:1rem;font-weight:500;margin-bottom:4px}
+.settings-desc{font-size:.8rem;color:var(--text-dim);margin-bottom:16px;line-height:1.5}
+
+.seed-input-wrap{display:flex;gap:8px;margin-bottom:16px}
+.seed-input{flex:1;padding:12px 16px;background:var(--surface);border:1px solid var(--border-light);border-radius:8px;color:var(--text);font-size:.85rem;font-family:var(--sans);transition:border-color .2s}
+.seed-input:focus{outline:none;border-color:var(--accent-dim)}
+.seed-input::placeholder{color:var(--text-dim)}
+.seed-add-btn{padding:12px 20px;background:var(--accent);color:#0a0a0c;border:none;border-radius:8px;font-size:.8rem;font-weight:600;font-family:var(--sans);cursor:pointer;transition:opacity .2s;white-space:nowrap}
+.seed-add-btn:hover{opacity:.85}
+
+.seed-list{display:flex;flex-wrap:wrap;gap:8px}
+.seed-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:.8rem;color:var(--text-muted)}
+.seed-chip button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.85rem;padding:0;line-height:1;transition:color .2s}
+.seed-chip button:hover{color:var(--red)}
+
+.style-profile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.style-profile-text{font-size:.85rem;color:var(--text-muted);line-height:1.7;font-style:italic}
+.style-profile-empty{font-size:.85rem;color:var(--text-dim);line-height:1.7}
+
+.slider-wrap{margin-bottom:16px}
+.slider-label{display:flex;justify-content:space-between;font-size:.75rem;color:var(--text-dim);margin-bottom:8px}
+.slider{width:100%;-webkit-appearance:none;appearance:none;height:4px;background:var(--surface2);border-radius:2px;outline:none}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg)}
+
+.settings-user{display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:16px}
+.settings-user img{width:36px;height:36px;border-radius:50%}
+.settings-user-info{flex:1}
+.settings-user-name{font-size:.9rem;font-weight:500}
+.settings-user-email{font-size:.75rem;color:var(--text-dim)}
+.signout-btn{padding:8px 16px;background:transparent;border:1px solid var(--border-light);border-radius:6px;color:var(--text-muted);font-size:.75rem;font-family:var(--sans);cursor:pointer;transition:all .2s}
+.signout-btn:hover{border-color:var(--red);color:var(--red)}
+
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center}
+.stat-num{font-size:1.4rem;font-weight:600;color:var(--accent);margin-bottom:2px}
+.stat-label{font-size:.65rem;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 24px;font-size:.8rem;font-weight:500;color:var(--text);z-index:500;animation:toastIn .3s var(--ease),toastOut .3s var(--ease) 2.7s;box-shadow:0 8px 32px rgba(0,0,0,.5);white-space:nowrap}
+.toast.success{border-bottom:2px solid var(--green)}
+.toast.error{border-bottom:2px solid var(--red)}
+
+/* ===== SETUP SCREEN ===== */
+.setup-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;animation:fadeUp .6s var(--ease);text-align:center}
+.setup-title{font-family:var(--serif);font-size:1.4rem;font-weight:400;margin-bottom:8px}
+.setup-desc{font-size:.85rem;color:var(--text-dim);margin-bottom:32px;max-width:340px;line-height:1.6}
+.setup-input-wrap{width:100%;max-width:400px;margin-bottom:24px}
+.setup-skip{font-size:.8rem;color:var(--text-dim);background:none;border:none;cursor:pointer;padding:12px;font-family:var(--sans);letter-spacing:.5px;transition:color .2s}
+.setup-skip:hover{color:var(--accent)}
+
+/* ===== EMPTY ===== */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center}
+.empty-icon{font-size:2rem;margin-bottom:16px;opacity:.3}
+.empty-title{font-family:var(--serif);font-size:1.1rem;color:var(--text-muted);margin-bottom:8px}
+.empty-text{font-size:.8rem;color:var(--text-dim);line-height:1.6;max-width:260px}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0}}
+@keyframes slideLeft{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(-100%)}}
+@keyframes slideRight{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(100%)}}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:640px){
+  .login-logo{font-size:2.2rem}
+  .artist-name{font-size:1.3rem}
+  .artist-gallery{grid-template-columns:1fr 1fr}
+  .liked-grid{grid-template-columns:repeat(3,1fr)}
+  .stats-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(min-width:641px){
+  .photo-frame{border-radius:0}
+  .liked-grid{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading"><div class="spinner"></div><div class="load-text">Folio</div></div></div>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import{getAuth,signInWithPopup,signOut,onAuthStateChanged,GoogleAuthProvider}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import{getFirestore,collection,doc,getDocs,getDoc,setDoc,deleteDoc,updateDoc,query,orderBy,limit,where}from"https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+
+// ===== CONFIGURATION =====
+const firebaseConfig={
+  apiKey:"AIzaSyDXc6w8vwO9NI8cy7zlYokZZ0_ZionxbZ8",
+  authDomain:"folio-740cf.firebaseapp.com",
+  projectId:"folio-740cf",
+  storageBucket:"folio-740cf.firebasestorage.app",
+  messagingSenderId:"518908269964",
+  appId:"1:518908269964:web:d1286f078bab705d8532a9"
+};
+
+// TODO: Replace with your Unsplash API access key (register at unsplash.com/developers)
+const UNSPLASH_KEY='98Mq_1hpimiVWWbX-B9g7MSSZ0hiHBXh_vLR8RE_Liw';
+const UNSPLASH_BASE='https://api.unsplash.com';
+
+// Demo mode: when true, uses curated sample data instead of live APIs
+const DEMO_MODE=!UNSPLASH_KEY||UNSPLASH_KEY.startsWith('YOUR_');
+
+let firebaseReady=false;
+let fbApp,auth,db,provider,currentUser=null;
+try{
+  fbApp=initializeApp(firebaseConfig);
+  auth=getAuth(fbApp);
+  db=getFirestore(fbApp);
+  provider=new GoogleAuthProvider();
+  firebaseReady=!firebaseConfig.apiKey.startsWith('YOUR_');
+}catch(e){firebaseReady=false}
+
+// ===== FIREBASE DATA LAYER =====
+function userPath(col){return`users/${currentUser.uid}/${col}`}
+async function fbAll(col){
+  if(!firebaseReady||!currentUser)return[];
+  try{const snap=await getDocs(collection(db,userPath(col)));return snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){return[]}
+}
+async function fbPut(col,data){
+  if(!firebaseReady||!currentUser)return;
+  await setDoc(doc(db,userPath(col),data.id),data);
+}
+async function fbDel(col,id){
+  if(!firebaseReady||!currentUser)return;
+  await deleteDoc(doc(db,userPath(col),id));
+}
+async function fbGet(col,id){
+  if(!firebaseReady||!currentUser)return null;
+  try{const snap=await getDoc(doc(db,userPath(col),id));return snap.exists()?{id:snap.id,...snap.data()}:null}catch(e){return null}
+}
+
+// ===== CURATED PHOTOGRAPHER DATABASE =====
+const PHOTOGRAPHERS=[
+  {id:'vivian-maier',name:'Vivian Maier',bio:'Secret street photographer whose work was discovered posthumously. Shot primarily in Chicago and New York, capturing candid moments of urban life.',genres:['street','black_and_white','documentary'],era:'mid_century',website:'http://www.vivianmaier.com',gallery:'Maloof Collection',instagram:'',active:false},
+  {id:'saul-leiter',name:'Saul Leiter',bio:'Pioneer of early color photography, known for abstracted views of New York City through rain, snow, and reflections.',genres:['street','color','abstract','fine_art'],era:'mid_century',website:'https://saulleiterfoundation.org',gallery:'Howard Greenberg Gallery',instagram:'@saulleiterfoundation',active:false},
+  {id:'fan-ho',name:'Fan Ho',bio:'Hong Kong-born photographer and filmmaker celebrated for his breathtaking use of light and shadow in street photography.',genres:['street','black_and_white','light','minimalist'],era:'mid_century',website:'',gallery:'Modernbook Gallery',instagram:'',active:false},
+  {id:'william-eggleston',name:'William Eggleston',bio:'Known as the father of color photography, his democratic approach to subject matter transformed the medium.',genres:['color','documentary','southern','fine_art'],era:'contemporary',website:'http://www.egglestontrust.com',gallery:'David Zwirner',instagram:'',active:true},
+  {id:'gregory-crewdson',name:'Gregory Crewdson',bio:'Creates elaborate, cinematic photographs of American suburban life, each image meticulously staged like a film still.',genres:['cinematic','staged','color','suburban'],era:'contemporary',website:'https://gagosian.com/artists/gregory-crewdson/',gallery:'Gagosian',instagram:'@gregorycrewdson',active:true},
+  {id:'rinko-kawauchi',name:'Rinko Kawauchi',bio:'Japanese photographer known for her luminous, poetic images that find extraordinary beauty in everyday moments.',genres:['color','poetic','minimal','nature','japanese'],era:'contemporary',website:'http://rinkokawauchi.com',gallery:'Aperture Foundation',instagram:'@rinkokawauchi',active:true},
+  {id:'alex-webb',name:'Alex Webb',bio:'Magnum photographer whose complex, layered color photographs explore life along geographic and cultural borders.',genres:['street','color','documentary','layered'],era:'contemporary',website:'https://www.webbnorriswebb.co',gallery:'Magnum Photos',instagram:'@webb_norriswebb',active:true},
+  {id:'daido-moriyama',name:'Daido Moriyama',bio:'Legendary Japanese street photographer known for his high-contrast, blurry, grainy black-and-white images of urban Japan.',genres:['street','black_and_white','gritty','japanese','provoke'],era:'contemporary',website:'',gallery:'Taka Ishii Gallery',instagram:'@daaboriyama',active:true},
+  {id:'stephen-shore',name:'Stephen Shore',bio:'Pioneering color photographer who elevated everyday American landscapes and architecture to fine art.',genres:['color','landscape','architecture','americana','fine_art'],era:'contemporary',website:'https://stephenshore.net',gallery:'303 Gallery',instagram:'@stephen.shore',active:true},
+  {id:'sebastiao-salgado',name:'Sebastião Salgado',bio:'Brazilian social documentary photographer known for his epic, sweeping black-and-white images of human labor and the natural world.',genres:['documentary','black_and_white','humanitarian','landscape'],era:'contemporary',website:'https://www.amazonasimages.com',gallery:'Amazonas Images',instagram:'',active:true},
+  {id:'todd-hido',name:'Todd Hido',bio:'Known for his atmospheric photographs of suburban homes at night and intimate landscapes that evoke loneliness and mystery.',genres:['landscape','night','suburban','atmospheric','color'],era:'contemporary',website:'https://www.toddhido.com',gallery:'Bruce Silverstein',instagram:'@toddhido',active:true},
+  {id:'alec-soth',name:'Alec Soth',bio:'Magnum photographer who creates lyrical portraits and landscapes exploring the mythologies of American life.',genres:['portrait','landscape','documentary','americana','color'],era:'contemporary',website:'https://alecsoth.com',gallery:'Sean Kelly Gallery',instagram:'@littlebrownmushroom',active:true},
+  {id:'nadav-kander',name:'Nadav Kander',bio:'Portrait and landscape photographer known for his psychologically rich portraits of world leaders and haunting landscapes of the Yangtze River.',genres:['portrait','landscape','color','fine_art'],era:'contemporary',website:'https://nadavkander.com',gallery:'Flowers Gallery',instagram:'@nadavkander',active:true},
+  {id:'masahisa-fukase',name:'Masahisa Fukase',bio:'Japanese photographer whose deeply personal work, especially his series on ravens, is considered among the greatest photobooks ever made.',genres:['black_and_white','personal','japanese','dark','poetic'],era:'mid_century',website:'',gallery:'Michael Hoppen Gallery',instagram:'',active:false},
+  {id:'ernst-haas',name:'Ernst Haas',bio:'Austrian-American photojournalist and color photography pioneer, known for his expressive motion studies and vibrant abstract work.',genres:['color','abstract','motion','fine_art','street'],era:'mid_century',website:'https://www.ernst-haas.com',gallery:'Ernst Haas Estate',instagram:'@ernsthaasestudio',active:false},
+  {id:'josef-koudelka',name:'Josef Koudelka',bio:'Czech-French photographer known for his dramatic photographs of Romani life and the Prague Spring invasion, working with bold compositions.',genres:['documentary','black_and_white','panoramic','gypsies'],era:'contemporary',website:'',gallery:'Magnum Photos',instagram:'',active:true},
+  {id:'mary-ellen-mark',name:'Mary Ellen Mark',bio:'Known for her penetrating portraits of people on the margins of society, from circus performers to homeless youth.',genres:['documentary','portrait','black_and_white','social'],era:'contemporary',website:'https://www.maryellenmark.com',gallery:'Howard Greenberg Gallery',instagram:'',active:false},
+  {id:'elliot-erwitt',name:'Elliott Erwitt',bio:'Magnum photographer celebrated for his witty, often humorous observations of everyday life, with a particular fondness for dogs.',genres:['street','humor','black_and_white','dogs','documentary'],era:'mid_century',website:'https://www.elliotterwitt.com',gallery:'Magnum Photos',instagram:'@elliotterwitt',active:true},
+  {id:'hiroshi-sugimoto',name:'Hiroshi Sugimoto',bio:'Japanese photographer exploring time, empiricism, and metaphysics through rigorous conceptual series of seascapes, theaters, and dioramas.',genres:['conceptual','black_and_white','minimalist','seascapes','fine_art'],era:'contemporary',website:'https://www.sugimotohiroshi.com',gallery:'Pace Gallery',instagram:'',active:true},
+  {id:'sally-mann',name:'Sally Mann',bio:'American photographer known for her large-format photographs of the American South, family, and landscapes imbued with history and decay.',genres:['landscape','portrait','black_and_white','southern','fine_art'],era:'contemporary',website:'https://sallymann.com',gallery:'Gagosian',instagram:'',active:true},
+  {id:'joel-meyerowitz',name:'Joel Meyerowitz',bio:'Pioneer of color street photography and large-format landscape work, documenting the beauty of light on Cape Cod and the streets of New York.',genres:['street','color','landscape','light'],era:'contemporary',website:'https://www.joelmeyerowitz.com',gallery:'Howard Greenberg Gallery',instagram:'@joelmeyerowitz',active:true},
+  {id:'martin-parr',name:'Martin Parr',bio:'British documentary photographer known for his satirical eye and boldly colored images of mass tourism, consumer culture, and social class.',genres:['documentary','color','satirical','british','social'],era:'contemporary',website:'https://www.martinparr.com',gallery:'Magnum Photos',instagram:'@martinparrstudio',active:true},
+  {id:'andreas-gursky',name:'Andreas Gursky',bio:'German photographer known for large-scale, often digitally manipulated color photographs depicting the architecture of global capitalism.',genres:['architecture','large_format','color','conceptual','fine_art'],era:'contemporary',website:'',gallery:'Sprüth Magers',instagram:'',active:true},
+  {id:'edward-weston',name:'Edward Weston',bio:'Modernist master who brought a new clarity and precision to photography through his exquisite still lifes, nudes, and landscapes.',genres:['modernist','black_and_white','still_life','landscape','fine_art'],era:'classic',website:'',gallery:'Center for Creative Photography',instagram:'',active:false},
+  {id:'garry-winogrand',name:'Garry Winogrand',bio:'Prolific American street photographer who captured the social landscape of postwar America with a restless, energetic eye.',genres:['street','black_and_white','documentary','americana'],era:'mid_century',website:'',gallery:'Fraenkel Gallery',instagram:'',active:false},
+  {id:'lee-friedlander',name:'Lee Friedlander',bio:'American photographer known for his complex, layered views of urban social landscapes, incorporating self-portraits, reflections, and shadows.',genres:['street','black_and_white','self_portrait','urban','layered'],era:'contemporary',website:'',gallery:'Fraenkel Gallery',instagram:'',active:true},
+  {id:'robert-frank',name:'Robert Frank',bio:'Swiss-American photographer whose book "The Americans" transformed documentary photography with its raw, poetic vision of postwar America.',genres:['documentary','black_and_white','americana','personal'],era:'mid_century',website:'',gallery:'Pace/MacGill Gallery',instagram:'',active:false},
+  {id:'william-klein',name:'William Klein',bio:'American-born, Paris-based photographer and filmmaker known for his gritty, high-contrast fashion and street photography.',genres:['street','fashion','black_and_white','gritty','experimental'],era:'mid_century',website:'',gallery:'Howard Greenberg Gallery',instagram:'',active:true},
+  {id:'guy-bourdin',name:'Guy Bourdin',bio:'Revolutionary fashion photographer known for his surreal, provocative, and boldly colored editorial work for French Vogue.',genres:['fashion','color','surreal','editorial'],era:'mid_century',website:'https://guybourdin.net',gallery:'Louise Alexander Gallery',instagram:'@guybourdin',active:false},
+  {id:'luigi-ghirri',name:'Luigi Ghirri',bio:'Italian photographer who created a quietly radical body of work, finding beauty and strangeness in the everyday landscapes of the Italian province.',genres:['landscape','color','Italian','conceptual','everyday'],era:'mid_century',website:'',gallery:'Matthew Marks Gallery',instagram:'',active:false},
+];
+
+// ===== DEMO PHOTO DATA (used when Unsplash API not configured) =====
+const DEMO_PHOTOS=[
+  {id:'demo-1',url:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',thumb:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',photographer:{name:'Aiony Haust',username:'aiony',profile:'https://unsplash.com/@aiony',avatar:''},tags:['portrait','color','natural_light']},
+  {id:'demo-2',url:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',thumb:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',photographer:{name:'Joseph Gonzalez',username:'jg',profile:'https://unsplash.com/@jg',avatar:''},tags:['portrait','color']},
+  {id:'demo-3',url:'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',thumb:'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400',photographer:{name:'Pedro Lastra',username:'peterlaster',profile:'https://unsplash.com/@peterlaster',avatar:''},tags:['urban','architecture','night']},
+  {id:'demo-4',url:'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800',thumb:'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400',photographer:{name:'Lukasz Szmigiel',username:'szmigieldesign',profile:'https://unsplash.com/@szmigieldesign',avatar:''},tags:['landscape','nature','light']},
+  {id:'demo-5',url:'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800',thumb:'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400',photographer:{name:'Raul Popadineți',username:'raulp',profile:'https://unsplash.com/@raulp',avatar:''},tags:['street','urban','color']},
+  {id:'demo-6',url:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800',thumb:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400',photographer:{name:'Kalen Emsley',username:'kalenemsley',profile:'https://unsplash.com/@kalenemsley',avatar:''},tags:['landscape','mountain','light']},
+  {id:'demo-7',url:'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800',thumb:'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400',photographer:{name:'Reinhart Julian',username:'reinhartjulian',profile:'https://unsplash.com/@reinhartjulian',avatar:''},tags:['portrait','black_and_white','camera']},
+  {id:'demo-8',url:'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800',thumb:'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400',photographer:{name:'Benjamin Voros',username:'vorosbenisop',profile:'https://unsplash.com/@vorosbenisop',avatar:''},tags:['landscape','night','stars','mountain']},
+  {id:'demo-9',url:'https://images.unsplash.com/photo-1495562569060-2eec283d3391?w=800',thumb:'https://images.unsplash.com/photo-1495562569060-2eec283d3391?w=400',photographer:{name:'Jared Erondu',username:'erondu',profile:'https://unsplash.com/@erondu',avatar:''},tags:['abstract','color','light']},
+  {id:'demo-10',url:'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',thumb:'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=400',photographer:{name:'Tim Stief',username:'timstief',profile:'https://unsplash.com/@timstief',avatar:''},tags:['landscape','ocean','minimalist']},
+  {id:'demo-11',url:'https://images.unsplash.com/photo-1524512099409-c8eee42f2724?w=800',thumb:'https://images.unsplash.com/photo-1524512099409-c8eee42f2724?w=400',photographer:{name:'Jonathan Borba',username:'jonathanborba',profile:'https://unsplash.com/@jonathanborba',avatar:''},tags:['portrait','fashion','studio']},
+  {id:'demo-12',url:'https://images.unsplash.com/photo-1511300636408-a63a89df3482?w=800',thumb:'https://images.unsplash.com/photo-1511300636408-a63a89df3482?w=400',photographer:{name:'Cristina Gottardi',username:'cristina_gottardi',profile:'https://unsplash.com/@cristina_gottardi',avatar:''},tags:['landscape','architecture','travel']},
+];
+
+// ===== UNSPLASH API =====
+async function unsplashSearch(queryStr,page=1,perPage=10){
+  if(DEMO_MODE)return null;
+  try{
+    const r=await fetch(`${UNSPLASH_BASE}/search/photos?query=${encodeURIComponent(queryStr)}&page=${page}&per_page=${perPage}&orientation=portrait`,{
+      headers:{'Authorization':`Client-ID ${UNSPLASH_KEY}`}
+    });
+    if(!r.ok)return null;
+    const data=await r.json();
+    return data.results.map(p=>({
+      id:p.id,
+      url:p.urls.regular,
+      thumb:p.urls.small,
+      fullUrl:p.urls.full,
+      photographer:{
+        name:p.user.name,
+        username:p.user.username,
+        profile:p.user.links.html,
+        avatar:p.user.profile_image?.medium||'',
+        bio:p.user.bio||''
+      },
+      tags:(p.tags||[]).map(t=>t.title).filter(Boolean).slice(0,5),
+      color:p.color,
+      description:p.description||p.alt_description||'',
+      downloadLink:p.links.download_location
+    }));
+  }catch(e){console.error('Unsplash error:',e);return null}
+}
+
+async function unsplashRandom(count=10,queryStr=''){
+  if(DEMO_MODE)return null;
+  try{
+    let url=`${UNSPLASH_BASE}/photos/random?count=${count}`;
+    if(queryStr)url+=`&query=${encodeURIComponent(queryStr)}`;
+    const r=await fetch(url,{headers:{'Authorization':`Client-ID ${UNSPLASH_KEY}`}});
+    if(!r.ok)return null;
+    const data=await r.json();
+    return data.map(p=>({
+      id:p.id,
+      url:p.urls.regular,
+      thumb:p.urls.small,
+      fullUrl:p.urls.full,
+      photographer:{
+        name:p.user.name,
+        username:p.user.username,
+        profile:p.user.links.html,
+        avatar:p.user.profile_image?.medium||'',
+        bio:p.user.bio||''
+      },
+      tags:(p.tags||[]).map(t=>t.title).filter(Boolean).slice(0,5),
+      color:p.color,
+      description:p.description||p.alt_description||''
+    }));
+  }catch(e){return null}
+}
+
+// ===== HELPERS =====
+function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,8)}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function shuffleArray(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ===== STATE =====
+let S={
+  view:'loading',
+  // Feed state
+  feedPhotos:[],
+  feedIndex:0,
+  feedLoading:false,
+  // Interactions
+  liked:[],
+  disliked:[],
+  saved:[],
+  // Artists
+  following:[],
+  seedArtists:[],
+  // Preference profile
+  preferences:{
+    style_description:'',
+    tag_weights:{},
+    exploration_ratio:30,
+    interaction_count:0,
+    last_analyzed:null,
+    search_queries:['photography','street photography','landscape','portrait','fine art photography']
+  },
+  // UI
+  overlay:null,   // artist detail overlay
+  toast:null,
+  setupDone:false,
+  currentPhoto:null,
+};
+
+function set(u){Object.assign(S,u);render()}
+function toast(m,t='success'){set({toast:{m,t}});setTimeout(()=>set({toast:null}),3000)}
+
+// ===== LOCAL STORAGE (works without Firebase) =====
+function saveLocal(){
+  try{
+    localStorage.setItem('folio_liked',JSON.stringify(S.liked));
+    localStorage.setItem('folio_disliked',JSON.stringify(S.disliked.map(d=>d.id)));
+    localStorage.setItem('folio_saved',JSON.stringify(S.saved));
+    localStorage.setItem('folio_following',JSON.stringify(S.following));
+    localStorage.setItem('folio_seeds',JSON.stringify(S.seedArtists));
+    localStorage.setItem('folio_prefs',JSON.stringify(S.preferences));
+    localStorage.setItem('folio_setup',JSON.stringify(S.setupDone));
+  }catch(e){}
+}
+function loadLocal(){
+  try{
+    S.liked=JSON.parse(localStorage.getItem('folio_liked')||'[]');
+    const dislikedIds=JSON.parse(localStorage.getItem('folio_disliked')||'[]');
+    S.disliked=dislikedIds.map(id=>({id}));
+    S.saved=JSON.parse(localStorage.getItem('folio_saved')||'[]');
+    S.following=JSON.parse(localStorage.getItem('folio_following')||'[]');
+    S.seedArtists=JSON.parse(localStorage.getItem('folio_seeds')||'[]');
+    S.preferences=JSON.parse(localStorage.getItem('folio_prefs')||'null')||S.preferences;
+    S.setupDone=JSON.parse(localStorage.getItem('folio_setup')||'false');
+  }catch(e){}
+}
+
+// ===== SYNC TO FIREBASE =====
+async function syncToFirebase(){
+  if(!firebaseReady||!currentUser)return;
+  try{
+    await fbPut('data',{id:'preferences',...S.preferences});
+    await fbPut('data',{id:'seeds',artists:S.seedArtists});
+    await fbPut('data',{id:'following',artists:S.following});
+    // Liked photos - store individually for querying
+    for(const p of S.liked.slice(-5)){
+      await fbPut('liked',{id:p.id,url:p.url,thumb:p.thumb,photographer:p.photographer,tags:p.tags||[],likedAt:p.likedAt||Date.now()});
+    }
+  }catch(e){console.error('Sync error:',e)}
+}
+
+async function loadFromFirebase(){
+  if(!firebaseReady||!currentUser)return;
+  try{
+    const prefs=await fbGet('data','preferences');
+    if(prefs){S.preferences={...S.preferences,...prefs};delete S.preferences.id}
+    const seeds=await fbGet('data','seeds');
+    if(seeds?.artists)S.seedArtists=seeds.artists;
+    const following=await fbGet('data','following');
+    if(following?.artists)S.following=following.artists;
+    const liked=await fbAll('liked');
+    if(liked.length)S.liked=liked;
+  }catch(e){console.error('Load error:',e)}
+}
+
+// ===== AUTH =====
+window.doLogin=async function(){
+  if(!firebaseReady){
+    // Demo mode - skip auth
+    S.setupDone=loadLocal()||false;
+    loadLocal();
+    if(!S.setupDone){set({view:'setup'})}
+    else{await loadFeed();set({view:'feed'})}
+    return;
+  }
+  try{await signInWithPopup(auth,provider)}catch(e){toast('Sign in failed','error')}
+};
+
+window.doLogout=async function(){
+  if(firebaseReady){await signOut(auth)}
+  currentUser=null;
+  set({view:'login'});
+};
+
+window.skipAuth=async function(){
+  loadLocal();
+  if(!S.setupDone){set({view:'setup'})}
+  else{await loadFeed();set({view:'feed'})}
+};
+
+if(firebaseReady){
+  onAuthStateChanged(auth,async user=>{
+    if(user){
+      currentUser=user;
+      set({view:'loading'});
+      loadLocal();
+      await loadFromFirebase();
+      if(!S.setupDone){set({view:'setup'})}
+      else{await loadFeed();set({view:'feed'})}
+    }else{
+      set({view:'login'});
+    }
+  });
+}else{
+  // No Firebase — go straight to demo
+  setTimeout(()=>{
+    loadLocal();
+    if(!S.setupDone){set({view:'login'})}
+    else{loadFeed().then(()=>set({view:'feed'}))}
+  },600);
+}
+
+// ===== FEED LOADING =====
+async function loadFeed(){
+  if(S.feedLoading)return;
+  S.feedLoading=true;
+  const seenIds=new Set([...S.liked.map(l=>l.id),...S.disliked.map(d=>d.id),...S.feedPhotos.map(f=>f.id)]);
+
+  let newPhotos=[];
+
+  if(!DEMO_MODE){
+    // Use preference-driven queries
+    const queries=S.preferences.search_queries||['photography'];
+    const q=queries[Math.floor(Math.random()*queries.length)];
+    const results=await unsplashSearch(q,Math.floor(Math.random()*5)+1,20);
+    if(results){
+      newPhotos=results.filter(p=>!seenIds.has(p.id));
+    }
+    // If not enough, try random
+    if(newPhotos.length<5){
+      const random=await unsplashRandom(15);
+      if(random){
+        newPhotos=[...newPhotos,...random.filter(p=>!seenIds.has(p.id))];
+      }
+    }
+  }
+
+  // Fallback to demo photos
+  if(newPhotos.length===0){
+    newPhotos=shuffleArray(DEMO_PHOTOS).filter(p=>!seenIds.has(p.id));
+  }
+
+  S.feedPhotos=[...S.feedPhotos,...newPhotos];
+  S.feedLoading=false;
+}
+
+// ===== INTERACTIONS =====
+window.likePhoto=async function(){
+  const photo=S.feedPhotos[S.feedIndex];
+  if(!photo)return;
+
+  // Animate
+  const btn=document.querySelector('.action-btn.like');
+  if(btn)btn.classList.add('action-pulse');
+
+  const likedPhoto={...photo,likedAt:Date.now()};
+  S.liked.push(likedPhoto);
+  S.preferences.interaction_count=(S.preferences.interaction_count||0)+1;
+
+  // Update tag weights
+  (photo.tags||[]).forEach(tag=>{
+    S.preferences.tag_weights[tag]=(S.preferences.tag_weights[tag]||0)+1;
+  });
+
+  nextPhoto();
+  saveLocal();
+  if(firebaseReady)fbPut('liked',likedPhoto);
+  checkAnalysisTrigger();
+};
+
+window.dislikePhoto=function(){
+  const photo=S.feedPhotos[S.feedIndex];
+  if(!photo)return;
+
+  const btn=document.querySelector('.action-btn.dislike');
+  if(btn)btn.classList.add('action-pulse');
+
+  S.disliked.push({id:photo.id});
+  S.preferences.interaction_count=(S.preferences.interaction_count||0)+1;
+
+  // Negative tag weights
+  (photo.tags||[]).forEach(tag=>{
+    S.preferences.tag_weights[tag]=(S.preferences.tag_weights[tag]||0)-0.5;
+  });
+
+  nextPhoto();
+  saveLocal();
+  checkAnalysisTrigger();
+};
+
+window.savePhoto=function(){
+  const photo=S.feedPhotos[S.feedIndex];
+  if(!photo)return;
+  if(S.saved.find(s=>s.id===photo.id)){toast('Already saved');return}
+  S.saved.push({...photo,savedAt:Date.now()});
+  saveLocal();
+  toast('Saved to collection');
+};
+
+function nextPhoto(){
+  S.feedIndex++;
+  // Pre-load more if running low
+  if(S.feedIndex>=S.feedPhotos.length-3){
+    loadFeed();
+  }
+  render();
+}
+
+function checkAnalysisTrigger(){
+  // Every 20 interactions, trigger preference analysis
+  if(S.preferences.interaction_count%20===0){
+    analyzePreferences();
+  }
+}
+
+// ===== PREFERENCE ANALYSIS (Client-side for now, Cloud Function in v2) =====
+async function analyzePreferences(){
+  const weights=S.preferences.tag_weights;
+  const sorted=Object.entries(weights).sort((a,b)=>b[1]-a[1]);
+  const topTags=sorted.filter(([_,v])=>v>0).slice(0,8).map(([k])=>k);
+  const bottomTags=sorted.filter(([_,v])=>v<0).map(([k])=>k);
+
+  // Generate search queries based on top preferences
+  const queries=[];
+  if(topTags.length>0){
+    queries.push(topTags.slice(0,3).join(' ')+ ' photography');
+    topTags.forEach(t=>queries.push(t+' photography'));
+  }
+  // Add seed artist-inspired queries
+  S.seedArtists.forEach(a=>{
+    const artist=PHOTOGRAPHERS.find(p=>p.name.toLowerCase()===a.toLowerCase());
+    if(artist){
+      queries.push(...artist.genres.map(g=>g.replace(/_/g,' ')+' photography'));
+    }
+  });
+  // Add exploration query
+  const allGenres=['street','landscape','portrait','abstract','documentary','fine art','minimalist','architecture','fashion','conceptual','color','night'];
+  const unexplored=allGenres.filter(g=>!topTags.includes(g)&&!bottomTags.includes(g));
+  if(unexplored.length)queries.push(unexplored[Math.floor(Math.random()*unexplored.length)]+' photography');
+
+  // Build style description
+  let desc='';
+  if(topTags.length>=3){
+    desc=`You're drawn to ${topTags.slice(0,3).join(', ')} photography`;
+    if(topTags.length>3)desc+=`, with additional interest in ${topTags.slice(3,6).join(' and ')}`;
+    desc+='.';
+    if(bottomTags.length)desc+=` You tend to pass on ${bottomTags.slice(0,3).join(', ')} work.`;
+  }
+
+  S.preferences.style_description=desc;
+  S.preferences.search_queries=[...new Set(queries)].slice(0,10);
+  S.preferences.last_analyzed=new Date().toISOString();
+  saveLocal();
+  if(firebaseReady)syncToFirebase();
+}
+
+// ===== ARTIST FOLLOWING =====
+window.toggleFollow=function(artistName){
+  const idx=S.following.findIndex(f=>f.toLowerCase()===artistName.toLowerCase());
+  if(idx>=0){
+    S.following.splice(idx,1);
+    toast('Unfollowed '+artistName);
+  }else{
+    S.following.push(artistName);
+    toast('Following '+artistName);
+  }
+  saveLocal();
+  if(firebaseReady)syncToFirebase();
+  render();
+};
+
+window.isFollowing=function(name){
+  return S.following.some(f=>f.toLowerCase()===name.toLowerCase());
+};
+
+// ===== SEED ARTISTS =====
+window.addSeed=function(){
+  const input=document.getElementById('seed-input');
+  if(!input)return;
+  const val=input.value.trim();
+  if(!val)return;
+  if(S.seedArtists.some(s=>s.toLowerCase()===val.toLowerCase())){toast('Already added');return}
+  S.seedArtists.push(val);
+  input.value='';
+  saveLocal();
+  analyzePreferences();
+  render();
+  toast('Added '+val);
+};
+
+window.removeSeed=function(name){
+  S.seedArtists=S.seedArtists.filter(s=>s!==name);
+  saveLocal();
+  render();
+};
+
+// ===== SETUP =====
+window.finishSetup=async function(){
+  S.setupDone=true;
+  saveLocal();
+  await loadFeed();
+  set({view:'feed'});
+};
+
+window.addSeedAndContinue=function(){
+  addSeed();
+};
+
+// ===== NAVIGATION =====
+window.goFeed=function(){set({view:'feed',overlay:null})};
+window.goLiked=function(){set({view:'liked',overlay:null})};
+window.goFollowing=function(){set({view:'following',overlay:null})};
+window.goSettings=function(){set({view:'settings',overlay:null})};
+window.openArtist=function(artistName){
+  const artist=PHOTOGRAPHERS.find(p=>p.name===artistName);
+  const photo=S.feedPhotos[S.feedIndex];
+  const photographer=photo?.photographer;
+  set({overlay:{type:'artist',artist,photographer,name:artistName}});
+};
+window.closeOverlay=function(){set({overlay:null})};
+window.openPhotoArtist=function(){
+  const photo=S.feedPhotos[S.feedIndex];
+  if(!photo)return;
+  openArtist(photo.photographer.name);
+};
+
+// ===== RENDER =====
+function render(){
+  const a=document.getElementById('app');
+  let h='';
+  switch(S.view){
+    case'loading':h=rLoading();break;
+    case'login':h=rLogin();break;
+    case'setup':h=rSetup();break;
+    case'feed':h=rFeed()+rBottomNav('feed');break;
+    case'liked':h=rLiked()+rBottomNav('liked');break;
+    case'following':h=rFollowing()+rBottomNav('following');break;
+    case'settings':h=rSettings()+rBottomNav('settings');break;
+  }
+  if(S.overlay)h+=rOverlay();
+  if(S.toast)h+=rToast();
+  a.innerHTML=h;
+}
+
+// ===== RENDER: Loading =====
+function rLoading(){
+  return`<div class="loading"><div class="spinner"></div><div class="load-text">Folio</div></div>`;
+}
+
+// ===== RENDER: Login =====
+function rLogin(){
+  return`<div class="login-screen">
+    <div class="login-logo">F<span>o</span>lio</div>
+    <div class="login-tagline">Discover · Collect · Learn</div>
+    ${firebaseReady?`
+    <button class="login-btn" onclick="doLogin()">
+      <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Sign in with Google
+    </button>
+    <div class="login-sub">Your preferences sync across devices</div>
+    `:`
+    <button class="login-btn" onclick="skipAuth()" style="margin-bottom:12px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+      Enter Folio
+    </button>
+    <div class="login-sub">Demo mode — data saved locally</div>
+    `}
+  </div>`;
+}
+
+// ===== RENDER: Setup (first-time seed artists) =====
+function rSetup(){
+  return`<div class="setup-screen">
+    <div style="font-size:2rem;margin-bottom:24px;opacity:.6">📷</div>
+    <div class="setup-title">Who inspires you?</div>
+    <div class="setup-desc">Add a few photographers you admire to help us learn your taste. You can always change these later.</div>
+    <div class="setup-input-wrap">
+      <div class="seed-input-wrap">
+        <input class="seed-input" id="seed-input" placeholder="e.g. Saul Leiter" onkeydown="if(event.key==='Enter')addSeedAndContinue()">
+        <button class="seed-add-btn" onclick="addSeed()">Add</button>
+      </div>
+      ${S.seedArtists.length?`<div class="seed-list" style="justify-content:center">${S.seedArtists.map(s=>`
+        <div class="seed-chip">${esc(s)}<button onclick="removeSeed('${esc(s)}')">&times;</button></div>
+      `).join('')}</div>`:''}
+    </div>
+    <button class="login-btn" onclick="finishSetup()" style="margin-bottom:12px">
+      ${S.seedArtists.length?'Start Discovering':'Skip for Now'}
+    </button>
+    ${!S.seedArtists.length?'<div class="login-sub">We\'ll start with a curated mix</div>':''}
+  </div>`;
+}
+
+// ===== RENDER: Feed =====
+function rFeed(){
+  const photo=S.feedPhotos[S.feedIndex];
+  if(!photo&&!S.feedLoading){
+    return`<div class="feed-container">
+      ${rFeedHeader()}
+      <div class="feed-empty">
+        <div class="feed-empty-icon">📷</div>
+        <div class="feed-empty-title">Loading your feed</div>
+        <div class="feed-empty-text">Finding photographs matched to your taste...</div>
+      </div>
+    </div>`;
+  }
+  if(!photo){
+    return`<div class="feed-container">${rFeedHeader()}<div class="loading" style="min-height:60vh"><div class="spinner"></div></div></div>`;
+  }
+
+  return`<div class="feed-container">
+    ${rFeedHeader()}
+    <div class="photo-card">
+      <div class="photo-frame" onclick="openPhotoArtist()">
+        <img src="${photo.url}" alt="${esc(photo.description||'')}" loading="eager">
+      </div>
+      <div class="photo-info">
+        <div class="photo-artist" onclick="openPhotoArtist()">${esc(photo.photographer.name)}</div>
+        ${photo.tags?.length?`<div class="photo-tags">${photo.tags.slice(0,4).map(t=>`<span class="photo-tag">${esc(t.replace(/_/g,' '))}</span>`).join('')}</div>`:''}
+      </div>
+      <div class="photo-actions">
+        <button class="action-btn dislike" onclick="dislikePhoto()" aria-label="Pass">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <button class="action-btn save" onclick="savePhoto()" aria-label="Save">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button class="action-btn like" onclick="likePhoto()" aria-label="Like">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function rFeedHeader(){
+  return`<div class="feed-header"><div class="feed-logo">F<span>o</span>lio</div></div>`;
+}
+
+// ===== RENDER: Bottom Nav =====
+function rBottomNav(active){
+  const tabs=[
+    {id:'feed',label:'Discover',icon:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',fn:'goFeed'},
+    {id:'liked',label:'Liked',icon:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',fn:'goLiked'},
+    {id:'following',label:'Artists',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',fn:'goFollowing'},
+    {id:'settings',label:'Profile',icon:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',fn:'goSettings'},
+  ];
+  return`<nav class="bottom-nav">${tabs.map(t=>`
+    <button class="nav-tab ${active===t.id?'active':''}" onclick="${t.fn}()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">${t.icon}</svg>
+      <span>${t.label}</span>
+    </button>
+  `).join('')}</nav>`;
+}
+
+// ===== RENDER: Liked =====
+function rLiked(){
+  if(!S.liked.length){
+    return`<div class="view">
+      <div class="view-header"><div class="view-title">Liked</div></div>
+      <div class="empty"><div class="empty-icon">♡</div><div class="empty-title">No liked photos yet</div><div class="empty-text">Photos you like will appear here</div></div>
+    </div>`;
+  }
+  const items=[...S.liked].reverse();
+  return`<div class="view">
+    <div class="view-header"><div class="view-title">Liked</div></div>
+    <div class="liked-grid">${items.map(p=>`
+      <div class="liked-item" onclick="openArtist('${esc(p.photographer?.name||'')}')">
+        <img src="${p.thumb||p.url}" loading="lazy" alt="">
+        <div class="liked-artist">${esc(p.photographer?.name||'')}</div>
+      </div>
+    `).join('')}</div>
+  </div>`;
+}
+
+// ===== RENDER: Following =====
+function rFollowing(){
+  if(!S.following.length){
+    return`<div class="view">
+      <div class="view-header"><div class="view-title">Artists</div></div>
+      <div class="empty"><div class="empty-icon">👤</div><div class="empty-title">No artists followed yet</div><div class="empty-text">Follow photographers from the feed to see them here</div></div>
+    </div>`;
+  }
+  return`<div class="view">
+    <div class="view-header"><div class="view-title">Artists</div></div>
+    <div class="following-list">${S.following.map(name=>{
+      const artist=PHOTOGRAPHERS.find(p=>p.name===name);
+      return`<div class="following-item" onclick="openArtist('${esc(name)}')">
+        <div class="following-avatar">${artist?'📷':'📷'}</div>
+        <div class="following-info">
+          <div class="following-name">${esc(name)}</div>
+          <div class="following-genre">${artist?artist.genres.slice(0,3).map(g=>g.replace(/_/g,' ')).join(', '):''}</div>
+        </div>
+        <div class="following-action">→</div>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+}
+
+// ===== RENDER: Settings =====
+function rSettings(){
+  const u=currentUser;
+  const p=S.preferences;
+  return`<div class="view">
+    <div class="view-header"><div class="view-title">Profile</div></div>
+    <div class="settings">
+
+      ${u?`<div class="settings-user">
+        ${u.photoURL?`<img src="${u.photoURL}">`:'<div style="width:36px;height:36px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center">👤</div>'}
+        <div class="settings-user-info">
+          <div class="settings-user-name">${esc(u.displayName||'')}</div>
+          <div class="settings-user-email">${esc(u.email||'')}</div>
+        </div>
+        <button class="signout-btn" onclick="doLogout()">Sign out</button>
+      </div>`:''}
+
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num">${S.liked.length}</div><div class="stat-label">Liked</div></div>
+        <div class="stat-card"><div class="stat-num">${S.following.length}</div><div class="stat-label">Following</div></div>
+        <div class="stat-card"><div class="stat-num">${p.interaction_count||0}</div><div class="stat-label">Rated</div></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">Your Taste Profile</div>
+        <div class="settings-desc">This evolves as you interact with the feed</div>
+        <div class="style-profile">
+          ${p.style_description?`<div class="style-profile-text">"${esc(p.style_description)}"</div>`
+          :`<div class="style-profile-empty">Rate more photos to build your taste profile. We analyze your preferences every 20 interactions.</div>`}
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">Seed Artists</div>
+        <div class="settings-desc">Photographers that inspire you — these strongly influence your feed</div>
+        <div class="seed-input-wrap">
+          <input class="seed-input" id="seed-input" placeholder="Add a photographer..." onkeydown="if(event.key==='Enter')addSeed()">
+          <button class="seed-add-btn" onclick="addSeed()">Add</button>
+        </div>
+        ${S.seedArtists.length?`<div class="seed-list">${S.seedArtists.map(s=>`
+          <div class="seed-chip">${esc(s)}<button onclick="removeSeed('${esc(s)}')">&times;</button></div>
+        `).join('')}</div>`:'<div style="font-size:.8rem;color:var(--text-dim)">No seed artists yet</div>'}
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">Discovery Level</div>
+        <div class="settings-desc">How much of your feed should be outside your comfort zone?</div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Focused</span><span>${p.exploration_ratio||30}%</span><span>Adventurous</span></div>
+          <input type="range" class="slider" min="10" max="60" value="${p.exploration_ratio||30}" onchange="updateExploration(this.value)">
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">Top Tags</div>
+        <div class="settings-desc">Based on your likes and dislikes</div>
+        ${Object.keys(p.tag_weights||{}).length?`
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${Object.entries(p.tag_weights).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([tag,weight])=>`
+            <span class="photo-tag" style="${weight>0?'color:var(--green)':'color:var(--red)'}">${esc(tag.replace(/_/g,' '))} ${weight>0?'+':''}${Math.round(weight)}</span>
+          `).join('')}
+        </div>`:'<div style="font-size:.8rem;color:var(--text-dim)">Rate photos to see your tag preferences</div>'}
+      </div>
+
+      ${!firebaseReady?`<div class="settings-section">
+        <div class="settings-title">Setup</div>
+        <div class="settings-desc">Configure API keys to unlock the full experience</div>
+        <div style="font-size:.8rem;color:var(--text-dim);line-height:1.6">
+          Currently running in demo mode. To connect to live data:<br>
+          1. Set up a Firebase project and add config<br>
+          2. Register for an Unsplash API key<br>
+          3. Deploy to GitHub Pages
+        </div>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+
+window.updateExploration=function(val){
+  S.preferences.exploration_ratio=parseInt(val);
+  saveLocal();
+};
+
+// ===== RENDER: Artist Overlay =====
+function rOverlay(){
+  const o=S.overlay;
+  if(!o)return'';
+
+  const artist=o.artist; // from curated DB
+  const photographer=o.photographer; // from Unsplash
+  const name=o.name||artist?.name||photographer?.name||'Unknown';
+  const bio=artist?.bio||photographer?.bio||'';
+  const website=artist?.website||'';
+  const gallery=artist?.gallery||'';
+  const instagram=artist?.instagram||'';
+  const profileUrl=photographer?.profile||'';
+  const avatar=photographer?.avatar||'';
+  const genres=artist?.genres||[];
+  const isFollowed=S.following.some(f=>f.toLowerCase()===name.toLowerCase());
+
+  // Find liked photos by this artist
+  const artistPhotos=S.liked.filter(p=>p.photographer?.name===name).slice(0,6);
+
+  return`<div class="overlay" onclick="if(event.target===this)closeOverlay()">
+    <div class="overlay-content">
+      <div class="overlay-close"><button onclick="closeOverlay()">&times;</button></div>
+
+      <div class="artist-header">
+        <div class="artist-avatar">
+          ${avatar?`<img src="${avatar}" alt="">`:'📷'}
+        </div>
+        <div class="artist-name">${esc(name)}</div>
+        ${bio?`<div class="artist-bio">${esc(bio)}</div>`:''}
+        <div class="artist-links">
+          <button class="artist-link artist-follow ${isFollowed?'following':''}" onclick="event.stopPropagation();toggleFollow('${esc(name)}')">
+            ${isFollowed?'✓ Following':'+ Follow'}
+          </button>
+          ${website?`<a class="artist-link" href="${website}" target="_blank" rel="noopener">Website →</a>`:''}
+          ${profileUrl&&!website?`<a class="artist-link" href="${profileUrl}" target="_blank" rel="noopener">Unsplash →</a>`:''}
+          ${gallery?`<a class="artist-link" href="#" onclick="event.preventDefault()">${esc(gallery)}</a>`:''}
+          ${instagram?`<a class="artist-link" href="https://instagram.com/${instagram.replace('@','')}" target="_blank" rel="noopener">${esc(instagram)}</a>`:''}
+        </div>
+      </div>
+
+      ${genres.length?`<div class="artist-section">
+        <div class="section-label">Genres</div>
+        <div class="artist-tags">${genres.map(g=>`<span class="photo-tag">${esc(g.replace(/_/g,' '))}</span>`).join('')}</div>
+      </div>`:''}
+
+      ${artistPhotos.length?`<div class="artist-section">
+        <div class="section-label">Your Liked Photos</div>
+        <div class="artist-gallery">${artistPhotos.map(p=>`
+          <div class="artist-gallery-item"><img src="${p.thumb||p.url}" loading="lazy" alt=""></div>
+        `).join('')}</div>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+
+// ===== RENDER: Toast =====
+function rToast(){
+  return`<div class="toast ${S.toast.t}">${esc(S.toast.m)}</div>`;
+}
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown',e=>{
+  if(S.view!=='feed')return;
+  if(e.key==='ArrowRight'||e.key==='l')likePhoto();
+  if(e.key==='ArrowLeft'||e.key==='h')dislikePhoto();
+  if(e.key==='s')savePhoto();
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();openPhotoArtist()}
+});
+
+// ===== TOUCH GESTURES =====
+let touchStartX=0,touchStartY=0,touchStartTime=0;
+document.addEventListener('touchstart',e=>{
+  if(S.view!=='feed'||S.overlay)return;
+  touchStartX=e.touches[0].clientX;
+  touchStartY=e.touches[0].clientY;
+  touchStartTime=Date.now();
+},{passive:true});
+
+document.addEventListener('touchend',e=>{
+  if(S.view!=='feed'||S.overlay)return;
+  const dx=e.changedTouches[0].clientX-touchStartX;
+  const dy=e.changedTouches[0].clientY-touchStartY;
+  const dt=Date.now()-touchStartTime;
+  if(dt>500||Math.abs(dy)>Math.abs(dx))return; // too slow or vertical
+  if(Math.abs(dx)<50)return; // too short
+  if(dx>0)likePhoto();
+  else dislikePhoto();
+},{passive:true});
+
+// ===== SERVICE WORKER =====
+if('serviceWorker'in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
