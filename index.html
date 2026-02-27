@@ -478,16 +478,15 @@ window.likePhoto=async function(photoId){
   const photo=S.feedPhotos.find(p=>p.id===photoId);
   if(!photo)return;
 
-  // Animate out
+  // Visual feedback — highlight the like button, disable both
   const card=document.getElementById('card-'+photoId);
   if(card){
-    card.style.transition='all .3s ease';
-    card.style.opacity='0';
-    card.style.transform='scale(0.95)';
-    setTimeout(()=>{if(card.parentNode)card.remove()},300);
+    const btn=card.querySelector('.inline-btn.like');
+    if(btn){btn.style.background='rgba(94,194,105,0.2)';btn.style.borderColor='var(--green)';btn.style.pointerEvents='none';}
+    const disBtn=card.querySelector('.inline-btn.dislike');
+    if(disBtn)disBtn.style.pointerEvents='none';
   }
 
-  S.interactedIds.add(photoId);
   const likedPhoto={...photo,likedAt:Date.now()};
   S.liked.push(likedPhoto);
   S.preferences.interaction_count=(S.preferences.interaction_count||0)+1;
@@ -506,16 +505,15 @@ window.dislikePhoto=function(photoId){
   const photo=S.feedPhotos.find(p=>p.id===photoId);
   if(!photo)return;
 
-  // Animate out
+  // Visual feedback — dim the card slightly and disable buttons
   const card=document.getElementById('card-'+photoId);
   if(card){
-    card.style.transition='all .3s ease';
-    card.style.opacity='0';
-    card.style.transform='scale(0.95)';
-    setTimeout(()=>{if(card.parentNode)card.remove()},300);
+    card.style.transition='opacity .3s ease';
+    card.style.opacity='0.4';
+    const btns=card.querySelectorAll('.inline-btn');
+    btns.forEach(b=>b.style.pointerEvents='none');
   }
 
-  S.interactedIds.add(photoId);
   S.disliked.push({id:photo.id});
   S.preferences.interaction_count=(S.preferences.interaction_count||0)+1;
 
@@ -643,12 +641,33 @@ window.goFeed=function(){set({view:'feed',overlay:null})};
 window.goLiked=function(){set({view:'liked',overlay:null})};
 window.goFollowing=function(){set({view:'following',overlay:null})};
 window.goSettings=function(){set({view:'settings',overlay:null})};
-window.openArtistById=function(photoId){
-  const photo=S.feedPhotos.find(p=>p.id===photoId);
+window.openArtistById=async function(photoId){
+  const photo=S.feedPhotos.find(p=>p.id===photoId)||S.liked.find(p=>p.id===photoId);
   if(!photo)return;
   const artist=PHOTOGRAPHERS.find(p=>p.name===photo.photographer.name);
   const photographer=photo?.photographer;
-  set({overlay:{type:'artist',artist,photographer,name:photo.photographer.name}});
+  // Show overlay immediately with loading state
+  set({overlay:{type:'artist',artist,photographer,name:photo.photographer.name,morePhotos:[],loadingMore:true}});
+  // Fetch more photos by this photographer from Unsplash
+  const username=photographer?.username;
+  if(username&&!DEMO_MODE){
+    try{
+      const r=await fetch(`${UNSPLASH_BASE}/users/${username}/photos?per_page=12&order_by=popular`,{
+        headers:{'Authorization':`Client-ID ${UNSPLASH_KEY}`}
+      });
+      if(r.ok){
+        const photos=await r.json();
+        const morePhotos=photos.map(p=>({id:p.id,url:p.urls.regular,thumb:p.urls.small}));
+        S.overlay.morePhotos=morePhotos;
+        S.overlay.loadingMore=false;
+        render();
+        return;
+      }
+    }catch(e){console.error('Fetch artist photos error:',e)}
+  }
+  // Fallback: show any liked photos from this artist
+  S.overlay.loadingMore=false;
+  render();
 };
 window.closeOverlay=function(){set({overlay:null})};
 
@@ -754,14 +773,14 @@ function rPhotoCard(photo){
     <div class="photo-info-row">
       <div class="photo-artist" onclick="openArtistById('${photo.id}')">${esc(photo.photographer.name)}</div>
       <div class="photo-inline-actions">
-        <button class="inline-btn dislike" onclick="dislikePhoto('${photo.id}')" aria-label="Pass">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <button class="inline-btn dislike" onclick="dislikePhoto('${photo.id}')" aria-label="Thumbs down">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
         </button>
         <button class="inline-btn save" onclick="savePhoto('${photo.id}')" aria-label="Save">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
         </button>
-        <button class="inline-btn like" onclick="likePhoto('${photo.id}')" aria-label="Like">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <button class="inline-btn like" onclick="likePhoto('${photo.id}')" aria-label="Thumbs up">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
         </button>
       </div>
     </div>
@@ -954,8 +973,10 @@ function rOverlay(){
   const genres=artist?.genres||[];
   const isFollowed=S.following.some(f=>f.toLowerCase()===name.toLowerCase());
 
-  // Find liked photos by this artist
-  const artistPhotos=S.liked.filter(p=>p.photographer?.name===name).slice(0,6);
+  // Photos from Unsplash API + any liked photos by this artist
+  const morePhotos=o.morePhotos||[];
+  const loadingMore=o.loadingMore||false;
+  const likedPhotos=S.liked.filter(p=>p.photographer?.name===name).slice(0,6);
 
   return`<div class="overlay" onclick="if(event.target===this)closeOverlay()">
     <div class="overlay-content">
@@ -972,7 +993,7 @@ function rOverlay(){
             ${isFollowed?'✓ Following':'+ Follow'}
           </button>
           ${website?`<a class="artist-link" href="${website}" target="_blank" rel="noopener">Website →</a>`:''}
-          ${profileUrl&&!website?`<a class="artist-link" href="${profileUrl}" target="_blank" rel="noopener">Unsplash →</a>`:''}
+          ${profileUrl?`<a class="artist-link" href="${profileUrl}" target="_blank" rel="noopener">Unsplash →</a>`:''}
           ${gallery?`<a class="artist-link" href="#" onclick="event.preventDefault()">${esc(gallery)}</a>`:''}
           ${instagram?`<a class="artist-link" href="https://instagram.com/${instagram.replace('@','')}" target="_blank" rel="noopener">${esc(instagram)}</a>`:''}
         </div>
@@ -983,12 +1004,17 @@ function rOverlay(){
         <div class="artist-tags">${genres.map(g=>`<span class="photo-tag">${esc(g.replace(/_/g,' '))}</span>`).join('')}</div>
       </div>`:''}
 
-      ${artistPhotos.length?`<div class="artist-section">
-        <div class="section-label">Your Liked Photos</div>
-        <div class="artist-gallery">${artistPhotos.map(p=>`
+      <div class="artist-section">
+        <div class="section-label">More Work</div>
+        ${loadingMore?`<div style="display:flex;justify-content:center;padding:40px"><div class="spinner"></div></div>`:''}
+        ${morePhotos.length?`<div class="artist-gallery">${morePhotos.map(p=>`
           <div class="artist-gallery-item"><img src="${p.thumb||p.url}" loading="lazy" alt=""></div>
-        `).join('')}</div>
-      </div>`:''}
+        `).join('')}</div>`:''}
+        ${!loadingMore&&!morePhotos.length&&likedPhotos.length?`<div class="artist-gallery">${likedPhotos.map(p=>`
+          <div class="artist-gallery-item"><img src="${p.thumb||p.url}" loading="lazy" alt=""></div>
+        `).join('')}</div>`:''}
+        ${!loadingMore&&!morePhotos.length&&!likedPhotos.length?`<div style="text-align:center;padding:24px;color:var(--text-dim);font-size:.85rem">No additional photos available</div>`:''}
+      </div>
     </div>
   </div>`;
 }
